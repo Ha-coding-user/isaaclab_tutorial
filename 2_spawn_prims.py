@@ -14,7 +14,7 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-from isaaclab.sim import sim_utils
+import isaaclab.sim as sim_utils
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 
 def design_scene():
@@ -42,6 +42,7 @@ def design_scene():
     cfg_cone.func("/World/Objects/Cone2", cfg_cone, translation=(-1.0, -1.0, 1.0))
     
     # spawn a green cone with colliders and rigid body
+    # RigidBodyAPI를 붙이면 물리 엔진이 지배하는 상태가 됨 (non-rigid 일 때는 물리적 특징을 줄 수 없음 - 위 2개의 콘)
     cfg_cone_rigid = sim_utils.ConeCfg(
         radius=0.15,
         height=0.5,
@@ -53,6 +54,8 @@ def design_scene():
     cfg_cone_rigid.func("/World/Objects/ConeRigid", cfg_cone_rigid, translation=(-0.2, 0.0, 2.0), orientation=(0.5, 0.0, 0.5, 0.0))
     
     # spawn a blue cuboid with deformable body
+    # 변형 가능한 물체의 특징을 가지고 있으며, 추후 옷 같은 prim에서 유용하게 사용가능할 것으로 보임
+    # Mesh object를 필요로 함
     cfg_cuboid_deformable = sim_utils.MeshCuboidCfg(
         size=(0.2, 0.5, 0.2),
         deformable_props=sim_utils.DeformableBodyPropertiesCfg(),
@@ -62,6 +65,7 @@ def design_scene():
     cfg_cuboid_deformable.func("/World/Objects/CuboidDeformable", cfg_cuboid_deformable, translation=(0.15, 0.0, 2.0))
     
     # spawn a usd file of a table into the scene
+    # 기본 USD 파일에 저장된 prim을 usd_path로 불러와서 사용할 수 있음
     cfg = sim_utils.UsdFileCfg(usd_path=f"{ISAAC_NUCLEUS_DIR}/Props/Mounts/SeattleLabTable/table_instanceable.usd")
     cfg.func("/World/Objects/Table", cfg, translation=(0.0, 0.0, 1.05))
     
