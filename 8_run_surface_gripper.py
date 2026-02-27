@@ -43,6 +43,8 @@ def design_scene():
     sim_utils.create_prim("/World/Origin2", "Xform", translation=origins[1])
     
     # Articulation: First we defie the robot config
+    # pick-and-place robot은 단순한 3축 로봇으로, x, y축을 따라 이동 + z축을 따라 상하로 움직임
+    # robot의 end-effector는 surface-gripper가 장착되어 있음
     pick_and_place_robot_cfg = PICK_AND_PLACE_CFG.copy()
     pick_and_place_robot_cfg.prim_path = "/World/Origin.*/Robot"
     pick_and_place_robot = Articulation(cfg=pick_and_place_robot_cfg)
