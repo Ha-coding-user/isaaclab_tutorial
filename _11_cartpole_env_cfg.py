@@ -122,7 +122,16 @@ class RewardCfg:
         weight=-0.005,
         params={"asset_cfg": SceneEntityCfg("robot", joint_names=["cart_to_pole"])}
     )
-    
+   
+# 대다수 학습 task들은 episode라 불리는 유한한 수의 step을 거쳐 일어남.
+# 예를 들어, cartpole task에서 agent가 가능한 오래 pole의 균형을 이루는 것을 유지하길 원함
+# 하지만, agent가 unstable / unsafe한 상태에 도달하게 되면, episode를 종료해야함
+# 반면 만약 agent가 오랫동안 pole의 균형을 유지할 수 있다면, episode를 종료하고
+# 새로운 episode를 실행하여 agent가 다른 starting config로부터 pole의 균형을 유지하는 것을 학습 해야함
+
+# managers.TerminationsCfg 클래스는 episode를 종료하기 위해 무엇으로 구성해야하는지 설정함
+#   - Episode Length: episode 길이가 정의된 max_episode_length 보다 더욱 커짐
+#   - Cart out of bounds: cart 가 bounds [-3, 3] 을 벗어남
 @configclass
 class TerminationCfg:
     """Termination terms for the MDP."""
