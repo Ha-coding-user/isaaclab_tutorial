@@ -26,11 +26,17 @@ from isaalcab.utils.math import sample_uniform
 
 from isaaclab_assets.robots.cartpole import CARTPOLE_CFG
 
+
+# manager-based environments와 유사하게, configuration 클래스는 정의되어야 한다.
+# 이는 simulation 파라미터들, scene, actors, task에 대한 세팅을 유지하기 위해서이다.
+# envs.DirectRLEnvCfg 클래스는 configuration의 기본 클래스로 사용된다
 @configclass
 class CartpoleEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 2
     episode_length = 5.0
+    # 직접적인 workflow 구현은 Action과 Observation manager들을 사용하지 않기 때문에,
+    # task config는 환경에 대한 action들과 observation들의 수를 정의해야만 한다.
     action_scale = 100.0
     action_space = 1
     observation_space = 4
@@ -53,6 +59,8 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     max_cart_pos = 3.0  # the cart is reset if it exceeds that position [m]
     initial_pole_angle_range = [-0.25, 0.25]
     
+    # config class는 task-specific attributes들(e.g. scaling for reward term)을
+    # 정의하기 위해 사용될 수 있음
     # reward scales
     rew_scale_alive = 1.0
     rew_scale_terminated = -2.0
@@ -60,6 +68,7 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     rew_scale_cart_vel = -0.01
     rew_cale_pole_vel = -0.005
     
+# 새로운 환경을 만들 때, 코드는 DirectRLEnv를 내포한 새로운 클래스를 정의해야만 함
 class CartpoleEnv(DirectRLEnv):
     cfg: CartpoleEnvCfg
     
@@ -75,6 +84,10 @@ class CartpoleEnv(DirectRLEnv):
         self.joint_pos = self.cartpole.data.joint_pos
         self.joint_vel = self.cartpole.data.joint_vel
         
+    # scene creation이 framework에 의해 처리되는 manager-based environment들과 달리,
+    # 여기선 function으로 처리함
+    # 이는 stage에 actor들을 추가하는 것, 환경을 복제하는 것, 환경들 간의 충돌을 필터링하는 것,
+    # actor들을 scene에 추가하는 것, 그리고 다른 추가적인 prop들을 scene에 추가하는 것을 포함함
     def _setup_scene(self):
         self.cartpole = Articulation(self.cfg.robot_cfg)
         
@@ -91,9 +104,13 @@ class CartpoleEnv(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
         
+    # policy로부터 action 인자를 받아들이며, 물리 계산을 수행하기 전에 RL 단계마다 한 번씩 호출.
+    # 이 함수는 policy의 action buffer를 처리하고 환경의 클래스 변수에 데이터를 캐시하는데 사용됨
     def _pre_physics_step(self, actions: torch.Tensor) -> None:
         self.action = self.action_scale * actions.clone()
         
+    # 각 RL 단계마다, 물리 단계 수행 전에 decimation 횟수만큼 호출.
+    # 이는 물리 단계마다 액션을 적용해야 하는 환경에서 더 큰 유연성을 제공함
     def _apply_action(self) -> None:
         self.cartpole.set_joint_effort_target(self.actions, joint_ids=self._cart_dof_idx)
         
@@ -124,6 +141,7 @@ class CartpoleEnv(DirectRLEnv):
             self.reset_terminated
         )
         
+    # 이는 어떤 환경이 reset 되어야 하는지, 어떤 환경들이 episode 길이 제한에 도달했는지 계산하는 logic을 자유롭게 구현가능
     def _get_done(self) -> tuple[torch.Tensor, torch.Tensor]:
         self.joint_pos = self.cartpole.data.joint_pos
         self.joint_vel = self.cartpole.data.joint_vel
@@ -133,6 +151,7 @@ class CartpoleEnv(DirectRLEnv):
         out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
         return out_of_bounds, time_out
     
+    # reset 되어야 할 환경을 계산한 후, 이 함수는 해당 환경들에 reset opration들을 적용한다.
     def _reset_idx(self, env_ids: Sequence[int] | None):
         if env_ids is None:
             env_ids = self.cartpole._ALL_INDICES    
